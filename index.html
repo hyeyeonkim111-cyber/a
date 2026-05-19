@@ -221,11 +221,6 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
         <select id="emp-bureau"><option value="">지방우정청을 먼저 선택하세요</option></select>
       </div>
       <div class="fg">
-        <label>생년월일 (숫자 8자리)</label>
-        <input type="text" id="emp-birth" placeholder="예: 19800315" maxlength="8" inputmode="numeric">
-        <p class="hint">1980년 3월 15일 → 19800315</p>
-      </div>
-      <div class="fg">
         <label>사용자 ID (담당자 부여, 숫자 4자리)</label>
         <input type="text" id="emp-name" placeholder="예: 0012" maxlength="4" inputmode="numeric" autocomplete="off">
       </div>
@@ -514,23 +509,19 @@ async function api(body){
 function empLogin(){
   const region=document.getElementById('emp-region').value;
   const bureau=document.getElementById('emp-bureau').value;
-  const birth=document.getElementById('emp-birth').value.trim();
   const name=document.getElementById('emp-name').value.trim();
   const pin=document.getElementById('emp-pin').value.trim();
   if(!region){alert('지방우정청을 선택해주세요.');return;}
   if(!bureau){alert('총괄국을 선택해주세요.');return;}
-  if(!/^[0-9]{8}$/.test(birth)){alert('생년월일을 숫자 8자리로 입력해주세요.\n예: 1980년 3월 15일 → 19800315');return;}
-  const by=parseInt(birth.slice(0,4)),bm=parseInt(birth.slice(4,6)),bd=parseInt(birth.slice(6,8));
-  if(by<1930||by>2006||bm<1||bm>12||bd<1||bd>31){alert('올바른 생년월일을 입력해주세요.');return;}
   if(!/^[0-9]{4}$/.test(name)){alert('사용자 ID는 숫자 4자리입니다.');return;}
   if(!/^[0-9]{4}$/.test(pin)){alert('비밀번호는 숫자 4자리입니다.');return;}
   const isJip=bureau.includes('우편집중국')||bureau.includes('물류센터');
   const bureauFull=isJip?bureau:bureau+'우체국';
-  const key=region+'_'+bureauFull+'_'+birth+'_'+name;
+  const key=region+'_'+bureauFull+'_'+name;
   const storedPin=localStorage.getItem('pin_'+key);
   if(storedPin&&storedPin!==pin){alert('비밀번호가 일치하지 않습니다.');return;}
   if(!storedPin) localStorage.setItem('pin_'+key,pin);
-  CU={key,name,region,bureau:bureauFull,birth};
+  CU={key,name,region,bureau:bureauFull};
   localStorage.setItem('bp_auto_login',JSON.stringify(CU));
   document.getElementById('emp-title').textContent='ID: '+name;
   initDate();
@@ -611,8 +602,15 @@ function showAdminErr(msg){
 }
 
 function parseKey(key){
+  // key 형식: 서울청_광화문우체국_1001 (생년월일 없음)
+  // 또는 구형: 서울청_광화문우체국_19800315_1001 (생년월일 있음)
   const p=String(key||'').split('_');
-  return {region:p[0]||'',bureau:p[1]||'',birth:p[2]||'',name:p.slice(3).join('_')||''};
+  if(p.length>=4 && /^[0-9]{8}$/.test(p[2])){
+    // 구형 (생년월일 포함)
+    return {region:p[0]||'',bureau:p[1]||'',birth:p[2]||'',name:p.slice(3).join('_')||''};
+  }
+  // 신형 (생년월일 없음)
+  return {region:p[0]||'',bureau:p[1]||'',birth:'',name:p[2]||''};
 }
 
 // ── 관리자 직원 목록
@@ -621,7 +619,8 @@ function renderAdminList(employees){
   let logged=0,high=0;
   employees.forEach(emp=>{
     const recs=emp.records||[];
-    if(recs.some(r=>r.date===todayStr)) logged++;
+    // 날짜 비교: 어떤 형식이든 YYYY-MM-DD로 정규화 후 비교
+    if(recs.some(r=>toYMD(r.date)===todayStr)) logged++;
     const lat=recs.length?recs[recs.length-1]:null;
     if(lat&&(lat.sys>=140||lat.dia>=90)) high++;
   });
@@ -632,8 +631,8 @@ function renderAdminList(employees){
 
   // 당일 혈압 높은 순 정렬
   const sorted=[...employees].sort((a,b)=>{
-    const ra=(a.records||[]).find(r=>r.date===todayStr);
-    const rb=(b.records||[]).find(r=>r.date===todayStr);
+    const ra=(a.records||[]).find(r=>toYMD(r.date)===todayStr);
+    const rb=(b.records||[]).find(r=>toYMD(r.date)===todayStr);
     return (rb?rb.sys:0)-(ra?ra.sys:0);
   });
   const top=sorted.slice(0,20);
@@ -652,7 +651,7 @@ function renderAdminList(employees){
 
   const rows=top.map(emp=>{
     const recs=emp.records||[];
-    const todayRec=recs.find(r=>r.date===todayStr);
+    const todayRec=recs.find(r=>toYMD(r.date)===todayStr);
     const lat=recs.length?recs[recs.length-1]:null;
     const bpBadge=todayRec?badge(todayRec.sys,todayRec.dia):'<span style="font-size:11px;color:var(--text3)">미입력</span>';
     const bpVal=todayRec?`<b>${todayRec.sys}/${todayRec.dia}</b>`:(lat?`<span style="color:var(--text3);font-size:11px">${lat.sys}/${lat.dia}(최근)</span>`:'');
@@ -801,7 +800,7 @@ function showBureauDetail(bureauName){
     '<span style="flex:0.8">ID</span><span style="flex:2">전체 기록</span><span style="flex:0.8;text-align:right">오늘</span></div>';
   emps.forEach(emp=>{
     const recs=[...(emp.records||[])].sort((a,b)=>b.date.localeCompare(a.date));
-    const todayRec=recs.find(r=>r.date===todayStr);
+    const todayRec=recs.find(r=>toYMD(r.date)===todayStr);
     const recsHtml=recs.slice(0,7).map(r=>
       `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${r.date}: <b style="color:var(--text1)">${r.sys}/${r.dia}</b> ${badge(r.sys,r.dia)}</div>`
     ).join('');
