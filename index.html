@@ -414,7 +414,7 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
 </div><!-- /app -->
 <script>
 // ★ Google Apps Script 웹 앱 URL (여기에 붙여넣기)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw58ZutRveJf8gdLg0UwXKqFrXz2FJxTPx5e4VaN_ezAX6k98pjHg_vma3A9smeQtUCVQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyww1KLa59BdoGwNutfmKRH1OlGgORfTFd3aznltQOPInfvTV0yKerCE8tB5C92pVCRQQ/exec';
 const ADMIN_PW = 'post1234';
 const ADMIN_MASTER = 'admin';
 const REGIONS_LIST = ['서울청','경인청','부산청','경북청','전북청','전남청','충청청','강원청','제주청'];
@@ -494,9 +494,31 @@ function badge(sys,dia){
 
 function toYMD(d){
   if(!d) return '';
-  const s=String(d);
+  const s=String(d).trim();
+  // YYYY-MM-DD 형식
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // ISO: 2026-05-19T... 형식
   if(s.includes('T')) return s.split('T')[0];
-  if(s.includes(' ')) return s.split(' ')[0];
+  // Date 객체 문자열: Mon May 19 2026... 형식
+  if(/^[A-Za-z]{3}\s/.test(s)){
+    const dt = new Date(s);
+    if(!isNaN(dt)){
+      const y=dt.getFullYear();
+      const m=String(dt.getMonth()+1).padStart(2,'0');
+      const dd=String(dt.getDate()).padStart(2,'0');
+      return y+'-'+m+'-'+dd;
+    }
+  }
+  // YYYY-MM-DD HH:mm:ss 형식
+  if(s.includes(' ') && /^\d{4}/.test(s)) return s.split(' ')[0];
+  // 그 외 Date 변환 시도
+  const dt2 = new Date(s);
+  if(!isNaN(dt2)){
+    const y=dt2.getFullYear();
+    const m=String(dt2.getMonth()+1).padStart(2,'0');
+    const dd=String(dt2.getDate()).padStart(2,'0');
+    return y+'-'+m+'-'+dd;
+  }
   return s;
 }
 
@@ -586,7 +608,7 @@ async function loadAdminData(){
       emp.bureau=String(emp.bureau||p.bureau||'');
       emp.birth=String(emp.birth||p.birth||'');
       emp.name=String(emp.name||p.name||'?');
-      emp.records=(emp.records||[]).map(r=>({...r,date:toYMD(r.date),sys:Number(r.sys),dia:Number(r.dia)}));
+      emp.records=(emp.records||[]).map(r=>({...r,date:toYMD(r.date||''),sys:Number(r.sys)||0,dia:Number(r.dia)||0})).filter(r=>r.date&&r.sys&&r.dia);
     });
     if(_adminType==='region'&&_adminRegion)
       records=records.filter(e=>e.region===_adminRegion);
@@ -615,7 +637,8 @@ function parseKey(key){
 
 // ── 관리자 직원 목록
 function renderAdminList(employees){
-  const todayStr=new Date().toISOString().split('T')[0];
+  const _now=new Date();
+  const todayStr=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
   let logged=0,high=0;
   employees.forEach(emp=>{
     const recs=emp.records||[];
@@ -794,7 +817,8 @@ function renderBureauChart(){
 function showBureauDetail(bureauName){
   const emps=_allEmployees.filter(e=>String(e.bureau)===bureauName);
   if(!emps.length){alert('해당 총괄국 직원 데이터가 없습니다.');return;}
-  const todayStr=new Date().toISOString().split('T')[0];
+  const _now=new Date();
+  const todayStr=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
   let html=`<div class="sec-title">${bureauName} 직원 전체 데이터</div>`;
   html+='<div class="rec-row" style="font-size:11px;font-weight:700;color:var(--text2);background:var(--bg);padding:6px 2px">'+
     '<span style="flex:0.8">ID</span><span style="flex:2">전체 기록</span><span style="flex:0.8;text-align:right">오늘</span></div>';
@@ -828,7 +852,7 @@ async function loadEmpHistory(){
   try{
     const res=await api({action:'getMine',key:CU.key});
     if(res.ok){
-      const recs=res.records.map(r=>({...r,date:toYMD(r.date),sys:Number(r.sys),dia:Number(r.dia)}))
+      const recs=res.records.map(r=>({...r,date:toYMD(r.date||''),sys:Number(r.sys)||0,dia:Number(r.dia)||0})).filter(r=>r.date&&r.sys&&r.dia)
         .sort((a,b)=>a.date.localeCompare(b.date));
       renderStats('emp-stats',recs);
       renderRecs('emp-records',recs);
