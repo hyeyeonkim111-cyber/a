@@ -414,7 +414,7 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
 </div><!-- /app -->
 <script>
 // ★ Google Apps Script 웹 앱 URL (여기에 붙여넣기)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyww1KLa59BdoGwNutfmKRH1OlGgORfTFd3aznltQOPInfvTV0yKerCE8tB5C92pVCRQQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzqcUAeTeUkCW6roIRcvc45HmMTnqV9l5iVMLgCmrqzzF8ni1IRo_MeYsEOvCfvJ-klhw/exec';
 const ADMIN_PW = 'post1234';
 const ADMIN_MASTER = 'admin';
 const REGIONS_LIST = ['서울청','경인청','부산청','경북청','전북청','전남청','충청청','강원청','제주청'];
@@ -495,29 +495,22 @@ function badge(sys,dia){
 function toYMD(d){
   if(!d) return '';
   const s=String(d).trim();
-  // YYYY-MM-DD 형식
+  // 이미 YYYY-MM-DD
   if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // ISO: 2026-05-19T... 형식
+  // YYYY-MM-DD HH:mm:ss
+  if(/^\d{4}-\d{2}-\d{2}\s/.test(s)) return s.slice(0,10);
+  // ISO T 형식
   if(s.includes('T')) return s.split('T')[0];
-  // Date 객체 문자열: Mon May 19 2026... 형식
-  if(/^[A-Za-z]{3}\s/.test(s)){
-    const dt = new Date(s);
-    if(!isNaN(dt)){
-      const y=dt.getFullYear();
-      const m=String(dt.getMonth()+1).padStart(2,'0');
-      const dd=String(dt.getDate()).padStart(2,'0');
-      return y+'-'+m+'-'+dd;
-    }
-  }
-  // YYYY-MM-DD HH:mm:ss 형식
-  if(s.includes(' ') && /^\d{4}/.test(s)) return s.split(' ')[0];
-  // 그 외 Date 변환 시도
-  const dt2 = new Date(s);
-  if(!isNaN(dt2)){
-    const y=dt2.getFullYear();
-    const m=String(dt2.getMonth()+1).padStart(2,'0');
-    const dd=String(dt2.getDate()).padStart(2,'0');
-    return y+'-'+m+'-'+dd;
+  // 숫자(엑셀 시리얼) 방지
+  if(/^\d+$/.test(s)) return s;
+  // Mon May 18 2026... 같은 형식 → UTC 기준으로 파싱
+  const dt = new Date(s);
+  if(!isNaN(dt.getTime())){
+    // UTC 기준으로 날짜 추출 (시간대 오류 방지)
+    const utcY = dt.getUTCFullYear();
+    const utcM = String(dt.getUTCMonth()+1).padStart(2,'0');
+    const utcD = String(dt.getUTCDate()).padStart(2,'0');
+    return utcY+'-'+utcM+'-'+utcD;
   }
   return s;
 }
@@ -638,7 +631,8 @@ function parseKey(key){
 // ── 관리자 직원 목록
 function renderAdminList(employees){
   const _now=new Date();
-  const todayStr=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+  // UTC 기준으로 오늘 날짜 계산 (구글 시트 날짜와 일치)
+  const todayStr=_now.getUTCFullYear()+'-'+String(_now.getUTCMonth()+1).padStart(2,'0')+'-'+String(_now.getUTCDate()).padStart(2,'0');
   let logged=0,high=0;
   employees.forEach(emp=>{
     const recs=emp.records||[];
@@ -649,8 +643,8 @@ function renderAdminList(employees){
   });
   document.getElementById('admin-summary').innerHTML=`
     <div class="metric"><div class="m-label">등록 직원</div><div class="m-val">${employees.length}<span class="m-unit">명</span></div></div>
-    <div class="metric"><div class="m-label">오늘 입력</div><div class="m-val">${logged}<span class="m-unit">명</span></div></div>
-    <div class="metric"><div class="m-label" style="color:#A32D2D">고혈압 주의</div><div class="m-val" style="color:#C8202F">${high}<span class="m-unit">명</span></div></div>`;
+    <div class="metric"><div class="m-label" style="color:#A32D2D">고혈압 주의</div><div class="m-val" style="color:#C8202F">${high}<span class="m-unit">명</span></div></div>
+    <div class="metric"><div class="m-label">오늘 측정</div><div class="m-val">${logged}<span class="m-unit">명</span></div></div>`;
 
   // 당일 혈압 높은 순 정렬
   const sorted=[...employees].sort((a,b)=>{
@@ -684,18 +678,18 @@ function renderAdminList(employees){
       return `<div class="emp-row" data-key="${key}" onclick="showDetail(this.dataset.key)" style="font-size:12px">
         <span style="flex:1.2;color:var(--text2)">${emp.region}</span>
         <span style="flex:1.5">${bureauShort}</span>
-        <span style="flex:0.7;font-weight:600">ID:${emp.name}</span>
+        <span style="flex:0.7;font-weight:700;color:var(--red)">No.${emp.name}</span>
         <div style="flex:1;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px">${bpBadge}${bpVal}</div>
       </div>`;
     else if(_adminType==='region')
       return `<div class="emp-row" data-key="${key}" onclick="showDetail(this.dataset.key)" style="font-size:12px">
         <span style="flex:2">${bureauShort}</span>
-        <span style="flex:0.7;font-weight:600">ID:${emp.name}</span>
+        <span style="flex:0.7;font-weight:700;color:var(--red)">No.${emp.name}</span>
         <div style="flex:1;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px">${bpBadge}${bpVal}</div>
       </div>`;
     else
       return `<div class="emp-row" data-key="${key}" onclick="showDetail(this.dataset.key)" style="font-size:12px">
-        <span style="flex:1;font-weight:600">ID:${emp.name}</span>
+        <span style="flex:1;font-weight:700;color:var(--red)">No.${emp.name}</span>
         <div style="flex:1;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px">${bpBadge}${bpVal}</div>
       </div>`;
   }).join('');
@@ -818,7 +812,8 @@ function showBureauDetail(bureauName){
   const emps=_allEmployees.filter(e=>String(e.bureau)===bureauName);
   if(!emps.length){alert('해당 총괄국 직원 데이터가 없습니다.');return;}
   const _now=new Date();
-  const todayStr=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+  // UTC 기준으로 오늘 날짜 계산 (구글 시트 날짜와 일치)
+  const todayStr=_now.getUTCFullYear()+'-'+String(_now.getUTCMonth()+1).padStart(2,'0')+'-'+String(_now.getUTCDate()).padStart(2,'0');
   let html=`<div class="sec-title">${bureauName} 직원 전체 데이터</div>`;
   html+='<div class="rec-row" style="font-size:11px;font-weight:700;color:var(--text2);background:var(--bg);padding:6px 2px">'+
     '<span style="flex:0.8">ID</span><span style="flex:2">전체 기록</span><span style="flex:0.8;text-align:right">오늘</span></div>';
@@ -829,7 +824,7 @@ function showBureauDetail(bureauName){
       `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${r.date}: <b style="color:var(--text1)">${r.sys}/${r.dia}</b> ${badge(r.sys,r.dia)}</div>`
     ).join('');
     html+=`<div class="rec-row" style="align-items:flex-start;padding:10px 0">
-      <span style="flex:0.8;font-size:13px;font-weight:600">ID:${emp.name}</span>
+      <span style="flex:0.8;font-size:13px;font-weight:700;color:var(--red)">No.${emp.name}</span>
       <div style="flex:2">${recsHtml||'<span style="font-size:11px;color:var(--text3)">기록없음</span>'}</div>
       <div style="flex:0.8;text-align:right">${todayRec?badge(todayRec.sys,todayRec.dia):'<span style="font-size:11px;color:var(--text3)">미입력</span>'}</div>
     </div>`;
@@ -948,7 +943,7 @@ async function showDetail(key){
     if(res.ok) recs=res.records.map(r=>({...r,date:toYMD(r.date),sys:Number(r.sys),dia:Number(r.dia)}));
   }
   recs=recs.sort((a,b)=>a.date.localeCompare(b.date));
-  document.getElementById('detail-title').textContent='ID:'+emp.name+' ('+String(emp.bureau).replace('우체국','').replace('우편집중국','집중국')+')';
+  document.getElementById('detail-title').textContent='No.'+emp.name+' ('+String(emp.bureau).replace('우체국','').replace('우편집중국','집중국')+')';
   renderStats('detail-stats',recs);
   renderRecs('detail-records',recs);
   go('s-detail');
