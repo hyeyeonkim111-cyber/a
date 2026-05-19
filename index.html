@@ -101,7 +101,7 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
 .preview{text-align:center;margin-top:8px;min-height:26px}
 
 /* 배지 */
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.badge{display:inline-flex;align-items:center;padding:2px 6px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
 .b-normal{background:var(--green-bg);color:var(--green-text)}
 .b-caution{background:var(--amber-bg);color:var(--amber-text)}
 .b-high{background:var(--rbg);color:var(--rtext)}
@@ -297,7 +297,11 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
         <label>사용자 ID (담당자 부여, 숫자 4자리)</label>
         <input type="text" id="emp-name" placeholder="예: 0012" maxlength="4" inputmode="numeric" autocomplete="off">
       </div>
-
+      <div class="fg" style="margin-bottom:0">
+        <label>생년월일 6자리 (본인 확인용)</label>
+        <input type="password" id="emp-pin" placeholder="예: 800315" maxlength="6" inputmode="numeric">
+        <p class="hint">생년월일 앞 6자리 입력 (예: 1980년 3월 15일 → 800315)</p>
+      </div>
     </div>
     <div class="info-box">
       <i class="ti ti-info-circle"></i>
@@ -751,18 +755,18 @@ function renderAdminList(employees){
       return `<div class="emp-row" data-key="${key}" onclick="showDetail(this.dataset.key)" style="font-size:12px">
         <span style="flex:1.2;color:var(--text2)">${emp.region}</span>
         <span style="flex:1.5">${bureauShort}</span>
-        <span style="flex:0.7;font-weight:700;color:var(--red)">No.${emp.name}</span>
+        <span style="flex:0.7;font-weight:700;color:var(--red)">${emp.name}</span>
         <div style="flex:1;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px">${bpBadge}${bpVal}</div>
       </div>`;
     else if(_adminType==='region')
       return `<div class="emp-row" data-key="${key}" onclick="showDetail(this.dataset.key)" style="font-size:12px">
         <span style="flex:2">${bureauShort}</span>
-        <span style="flex:0.7;font-weight:700;color:var(--red)">No.${emp.name}</span>
+        <span style="flex:0.7;font-weight:700;color:var(--red)">${emp.name}</span>
         <div style="flex:1;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px">${bpBadge}${bpVal}</div>
       </div>`;
     else
       return `<div class="emp-row" data-key="${key}" onclick="showDetail(this.dataset.key)" style="font-size:12px">
-        <span style="flex:1;font-weight:700;color:var(--red)">No.${emp.name}</span>
+        <span style="flex:1;font-weight:700;color:var(--red)">${emp.name}</span>
         <div style="flex:1;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px">${bpBadge}${bpVal}</div>
       </div>`;
   }).join('');
@@ -897,7 +901,7 @@ function showBureauDetail(bureauName){
       `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${r.date}: <b style="color:var(--text1)">${r.sys}/${r.dia}</b> ${badge(r.sys,r.dia)}</div>`
     ).join('');
     html+=`<div class="rec-row" style="align-items:flex-start;padding:10px 0">
-      <span style="flex:0.8;font-size:13px;font-weight:700;color:var(--red)">No.${emp.name}</span>
+      <span style="flex:0.8;font-size:13px;font-weight:700;color:var(--red)">${emp.name}</span>
       <div style="flex:2">${recsHtml||'<span style="font-size:11px;color:var(--text3)">기록없음</span>'}</div>
       <div style="flex:0.8;text-align:right">${todayRec?badge(todayRec.sys,todayRec.dia):'<span style="font-size:11px;color:var(--text3)">미입력</span>'}</div>
     </div>`;
@@ -1016,7 +1020,7 @@ async function showDetail(key){
     if(res.ok) recs=res.records.map(r=>({...r,date:toYMD(r.date),sys:Number(r.sys),dia:Number(r.dia)}));
   }
   recs=recs.sort((a,b)=>a.date.localeCompare(b.date));
-  document.getElementById('detail-title').textContent='No.'+emp.name+' ('+String(emp.bureau).replace('우체국','').replace('우편집중국','집중국')+')';
+  document.getElementById('detail-title').textContent=emp.name+' ('+String(emp.bureau).replace('우체국','').replace('우편집중국','집중국')+')';
   renderStats('detail-stats',recs);
   renderRecs('detail-records',recs);
   go('s-detail');
