@@ -327,12 +327,18 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
       <div class="card-hd"><i class="ti ti-shield-lock"></i><h3>관리자 로그인</h3></div>
       <div class="fg">
         <label>관리자 ID</label>
-        <input type="text" id="admin-id" placeholder="관리자 ID 입력" autocomplete="off">
+        <input type="text" id="admin-id" placeholder="예) admin" autocomplete="off" style="color:var(--text1)">
       </div>
       <div class="fg" style="margin-bottom:0">
         <label>비밀번호</label>
-        <input type="password" id="admin-pw" placeholder="비밀번호 입력">
+        <input type="password" id="admin-pw" placeholder="예) post1234">
       </div>
+    </div>
+    <div style="background:#FFF8F8;border:0.5px solid #FFCCCC;border-radius:var(--r-md);padding:10px 14px;margin-bottom:1rem;font-size:12px;color:#9B1520;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:4px">📋 관리자 계정 안내</div>
+      <div>• 전체관리자: <b>admin</b> / <b>post1234</b></div>
+      <div>• 청 관리자: <b>서울청관리자</b> 등 / <b>post1234</b></div>
+      <div>• 총괄국 관리자: <b>부산사상우체국관리자</b> 등 / <b>post1234</b></div>
     </div>
     <button class="btn btn-primary" onclick="adminLogin()">로그인</button>
   </div>
@@ -473,7 +479,10 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
   <div class="body-pad">
     <div class="metric-grid" id="detail-stats"></div>
     <div class="card">
-      <div class="card-hd"><i class="ti ti-chart-line"></i><h3>혈압 추이 (최근 14일)</h3></div>
+      <div class="card-hd">
+        <i class="ti ti-chart-line"></i>
+        <h3>혈압 추이 (최근 14일)</h3>
+      </div>
       <div class="legend">
         <span><span class="ld" style="background:#C8202F"></span>최고혈압</span>
         <span><span class="ld" style="background:#185FA5"></span>최저혈압</span>
@@ -487,7 +496,7 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
 </div><!-- /app -->
 <script>
 // ★ Google Apps Script 웹 앱 URL (여기에 붙여넣기)
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyLCSye6zdzeB3mHcLhGKXVKBhbHnx1Nargrw5qYfjSHbAkgI5ZxVJcliK_0W035g6bLg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwdyxp-jnt4UOYkBNz7Ts37lYdXQYx46qD2pbFjLaty7MPBJh7HatHPzE0PKJZ5YvncNA/exec';
 const ADMIN_PW = 'post1234';
 const ADMIN_MASTER = 'admin';
 const REGIONS_LIST = ['서울청','경인청','부산청','경북청','전북청','전남청','충청청','강원청','제주청'];
@@ -1020,7 +1029,12 @@ async function showDetail(key){
     if(res.ok) recs=res.records.map(r=>({...r,date:toYMD(r.date),sys:Number(r.sys),dia:Number(r.dia)}));
   }
   recs=recs.sort((a,b)=>a.date.localeCompare(b.date));
-  document.getElementById('detail-title').textContent=emp.name+' ('+String(emp.bureau).replace('우체국','').replace('우편집중국','집중국')+')';
+  const bureauShort=String(emp.bureau||'').replace('우체국','').replace('우편집중국','집중국');
+  const parts=[];
+  if(emp.region) parts.push(emp.region);
+  if(bureauShort) parts.push(bureauShort);
+  parts.push('ID: '+emp.name);
+  document.getElementById('detail-title').textContent=parts.join(' · ');
   renderStats('detail-stats',recs);
   renderRecs('detail-records',recs);
   go('s-detail');
